@@ -770,6 +770,13 @@
        engine.css's own 76px desktop default, reduced to 57px. */
     @media(min-width:901px){
       .kpi-mini-row-big{ gap:57px !important; }
+      /* Client's own explicit "+100%" ask on EVERY KPI tile's bottom pair
+         of numbers (בביצוע/בתכנון, בפועל/פער מהתכנון, נוצל בפועל/יתרה,
+         השלמה בפועל/ניצול תקציב - all four tiles, not just the 2-KPI
+         edge case above) - engine.css's own 38px desktop default, doubled
+         to 76px. Labels (מיני-label) are untouched - only the numbers
+         themselves were asked for. */
+      .kpi-mini-row-big .mini-value-big{ font-size:76px !important; }
     }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:1.25em !important; }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-label{ font-size:1.1em !important; }
@@ -1335,6 +1342,23 @@
       .demo-mini-col-flag { padding:3px 8px; }
       .demo-mini-tile::before { font-size:11px; }
       .demo-mini-col-budget .demo-mini-num, .demo-mini-col-spent .demo-mini-num, .demo-mini-col-remaining .demo-mini-num { font-size:12.5px; }
+      /* Client's own explicit ask: center + enlarge the phases/duration/
+         progress numbers here the same way as landscape's own "כרטיסיות"
+         cards already do (see body.demo-classic .demo-mini-tile below,
+         same font sizes: 27px/30px) - portrait inherits align-items:
+         flex-start; text-align:right from the shared @media(max-width:900px)
+         .demo-mini-tile rule above (both orientations), which landscape's
+         own classic-mode rule already overrides but portrait never did.
+         Progress keeps justify-self:start (not centered) - same
+         deliberate structural exception as landscape's own version, its
+         grid-column:2 placement puts it right after the % label instead
+         of floating alone in the tile, so centering it would separate it
+         from that label instead of matching landscape's own look. */
+      .demo-mini-tile:not(.demo-mini-col-progress){
+        justify-content:center; align-items:center; text-align:center;
+      }
+      .demo-mini-col-phases .demo-mini-num, .demo-mini-col-duration .demo-mini-num{ font-size:27px; }
+      .demo-mini-col-progress .demo-mini-num{ font-size:30px; }
     }
 
     /* Landscape phones: every project card is a fixed 5cm (~189 css px)
