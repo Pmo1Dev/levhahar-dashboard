@@ -780,6 +780,24 @@
     }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:1.25em !important; }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-label{ font-size:1.1em !important; }
+    /* The rule right above (1.25em, unscoped - it also has to cover 13px
+       mobile landscape and 26px portrait bases, not just desktop) has the
+       SAME specificity (one ID + one class, !important) as the plain
+       desktop rule earlier in this same @media(min-width:901px) block, so
+       on that tie source order decides - and being declared AFTER that
+       whole block meant it was winning at desktop width too, silently
+       overriding the +100% ask back down to 1.25em of ITS OWN narrower,
+       2-tile-layout base (measured live on arielgabay-dashboard/
+       levhahar-dashboard - both real clients' actual portfolios, which
+       happen to render exactly 2 KPI tiles - 16px*1.25=20px, nowhere near
+       the 76px every wider-portfolio site correctly showed instead).
+       Repeating the same selector again here, AFTER it this time, wins
+       that same-specificity tie for desktop specifically, without
+       touching what 1.25em still does for this selector at the two
+       mobile breakpoints, where it was never part of this ask. */
+    @media(min-width:901px){
+      #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:76px !important; }
+    }
     body.demo-compact-active .project-card{ display:none; }
     .demo-mini-bar{ display:none; }
     /* Duration tile's unit text: both spans always exist in the markup
