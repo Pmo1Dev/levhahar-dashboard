@@ -572,25 +572,25 @@
   const fabBar = document.createElement('div');
   fabBar.className = 'demo-fab-bar';
   fabBar.innerHTML = `
-    <button type="button" class="demo-fab demo-fab-toggle-all">פתח הכל</button>
+    <button type="button" class="demo-fab demo-fab-icon demo-fab-toggle-all" aria-label="פתח הכל">⊞</button>
     <button type="button" class="demo-fab demo-fab-icon demo-fab-top" aria-label="חזרה לראש הדף">↑</button>
     <button type="button" class="demo-fab demo-fab-icon demo-fab-bottom" aria-label="מעבר לתחתית הדף">↓</button>
   `;
   document.body.appendChild(fabBar);
   const toggleAllBtn = fabBar.querySelector('.demo-fab-toggle-all');
-  // Landscape phones only: this floating "פתח הכל" fab was dropped there
-  // entirely for one round (client's own earlier call that it wasn't worth
-  // the screen space), then briefly replaced with a small inline button
-  // above the card list instead of floating - client's own later,
-  // explicit correction: keep it floating, transparent, stacked above the
-  // ↑/↓ icons (see .demo-fab-toggle-all's own landscape rule further down,
-  // which re-shows it there instead of the shared block's display:none).
-  // Already sits first in fabBar's own DOM order = top of the column, so
-  // no separate positioning is needed once it's simply visible again.
+  // Client's own explicit "everywhere" ask: a transparent ICON matching
+  // the ↑/↓ round buttons beside it, not a text pill - this used to be a
+  // "פתח הכל"/"סגור הכל" text button (still transparent-pill-styled only
+  // in landscape, solid pill everywhere else); now the exact same icon
+  // treatment as its neighbors, at every width. ⊞ (grid/expand) offers
+  // "open all", ⊟ (collapse) offers "close all" - aria-label carries the
+  // actual action in words for anyone who can't tell from the glyph alone.
   function toggleAllRows(){
     const anyOpen = allRows.some(r => r.card.classList.contains('demo-mini-open'));
     allRows.forEach(r => anyOpen ? r.collapseToMini() : r.openFully());
-    toggleAllBtn.textContent = anyOpen ? 'פתח הכל' : 'סגור הכל';
+    toggleAllBtn.textContent = anyOpen ? '⊞' : '⊟';
+    toggleAllBtn.setAttribute('aria-label', anyOpen ? 'פתח הכל' : 'סגור הכל');
+    toggleAllBtn.title = anyOpen ? 'פתח הכל' : 'סגור הכל';
   }
   toggleAllBtn.addEventListener('click', toggleAllRows);
   // behavior:'smooth' here, unlike the height animation this file no
@@ -711,19 +711,36 @@
        instant the class was removed rather than at the end of the shrink.
        This rule still matters as the correct RESTING state before any JS
        has touched a given row at all. */
+    /* Tooltip direction: engine.css always opens these upward
+       (bottom:135%/122%), which clips/overlaps whatever sits above the
+       icon whenever there isn't much room there - the KPI row right under
+       the header, in particular. Client's own screenshots showed this on
+       desktop too, not just the narrower landscape-mobile header this was
+       first fixed for - flipped to open downward everywhere instead. */
+    .info-icon:hover::after, .info-icon.tip-open::after{ bottom:auto !important; top:135%; }
+    .info-icon:hover::before, .info-icon.tip-open::before{ bottom:auto !important; top:122%; }
+    /* Info-sheet z-index fix (see the JS block further down this file that
+       toggles this class): raises the CARD holding an open info panel
+       above its sibling cards, so the panel no longer renders under/behind
+       the next card - client's own screenshots showed this on desktop too
+       (a sibling card's own translucent background showing its text
+       through the panel underneath it), not just landscape mobile. */
+    .demo-info-raised{ position:relative; z-index:20; }
     body.demo-compact-active .project-card{ display:none; }
     .demo-mini-bar{ display:none; }
     /* Duration tile's unit text: both spans always exist in the markup
-       (see the template), full "חוד'" shown by default at every width -
-       only the landscape-mobile media query further down flips this to
-       the short "ח'" form there specifically. This rule must NOT live
-       inside any @media(max-width:900px) block - this whole compact-card
-       markup renders at every width, including desktop, not just mobile,
-       so a mobile-scoped default here left BOTH spans visible on desktop
-       (double text, "66 חוד' ח'") until caught by the standard desktop
-       regression check. */
-    .demo-duration-unit-full{ display:inline; }
-    .demo-duration-unit-short{ display:none; }
+       (see the template) - the short "ח'" form is now the ONLY one ever
+       shown, at every width, client's own explicit "everywhere" ask
+       (digits first, then "ח'" to their left - e.g. "58 ח'"). This rule
+       must NOT live inside any @media(max-width:900px) block - this whole
+       compact-card markup renders at every width, including desktop, not
+       just mobile. RTL+isolate so the geresh/letter render on the
+       correct side of the (LTR-rendered) number instead of picking up the
+       surrounding ltr-num container's own direction. */
+    .demo-duration-unit-full{ display:none; }
+    .demo-duration-unit-short{
+      display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-start:3px;
+    }
     body.demo-compact-active .demo-mini-bar{ display:flex; }
     body.demo-compact-active .demo-mini-bar.demo-mini-hidden{ display:none; }
     .demo-mini-head{ display:none; }
@@ -1115,25 +1132,27 @@
         justify-content:space-between; gap:8px;
       }
 
-      /* Floating controls: "open all" dropped on phones; scroll icons kept. */
-      .demo-fab-toggle-all{ display:none; }
+      /* Floating controls: all three are now the same plain round icon
+         button (.demo-fab-icon) - open/close-all included, client's own
+         "everywhere" ask - so this only needs to size them, not hide or
+         re-show anything. */
       .demo-fab-icon{ width:40px; height:40px; font-size:16px; }
     }
-    /* Scroll-to-top/bottom icons: 25% smaller in landscape specifically -
+    /* Scroll/toggle-all icons: 25% smaller in landscape specifically -
        overrides the shared 40px size right above (portrait keeps that
        size unchanged). */
     @media(max-width:900px) and (orientation:landscape){
       .demo-fab-icon{ width:30px !important; height:30px !important; font-size:13px !important; }
-      /* "פתח הכל"/"סגור הכל": client's own explicit correction - keep this
-         floating (not an inline button above the card list, tried and
-         reverted), transparent, stacked above the ↑/↓ icons. Already sits
-         first in fabBar's own column layout = already above them; only
-         needs re-showing here (the shared 900px block above drops it) and
-         a more transparent look than its portrait/desktop pill. */
-      .demo-fab-toggle-all{
-        display:inline-flex !important; background:rgba(var(--accent-rgb),.10) !important;
-        padding:6px 14px !important; font-size:11px !important;
-      }
+      /* Floating controls: moved to the bottom-LEFT here specifically -
+         client's own explicit report that they sit on the right (where
+         positionFabBar()'s desktop/portrait margin-following JS also
+         anchors them in landscape, since nothing here overrode that
+         before) and get in the way of the real content, which reads on
+         the right in this RTL layout. !important beats that JS's own
+         plain (non-important) inline right value, the same override
+         technique already used elsewhere in this file for exactly that
+         reason. */
+      .demo-fab-bar{ left:12px !important; right:auto !important; }
     }
 
     @media(max-width:560px) and (orientation:portrait){
@@ -1239,8 +1258,17 @@
         display:grid; grid-template-columns:repeat(3,1fr); align-items:start; gap:8px;
       }
       body.demo-compact-active.demo-classic .project-card.demo-mini-open { grid-column:1 / -1; }
+      /* height:auto (was) let every card size itself to its own content -
+         a card with a longer title/more tiles reads visibly taller than
+         its neighbors. Client's own explicit "every card the same width
+         AND height" ask - a fixed height (matching the same fixed-height
+         convention portrait already uses), set to the tallest card's own
+         real natural height (measured directly - a guessed value clipped
+         real content badly here first) plus a small margin, so shorter
+         cards grow to match instead of every card shrinking to the
+         shortest one's height and clipping. */
       body.demo-compact-active.demo-classic .demo-mini-bar:not(.demo-mini-hidden) {
-        display:grid; width:auto; height:auto; box-sizing:border-box; margin-bottom:0;
+        display:grid; width:auto; height:500px; box-sizing:border-box; margin-bottom:0;
         grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding:5px; grid-auto-rows:min-content;
       }
     }
@@ -1404,7 +1432,14 @@
          lot, aim for 4 per row" + "shrink the weighted-completion KPI's
          own internal gaps specifically") - CSS-only, engine.js/engine.css
          untouched. */
-      #kpi-row{ grid-template-columns:repeat(4,1fr) !important; gap:6px; margin-bottom:8px; }
+      /* Client's own follow-up: a fixed repeat(4,1fr) left empty gap
+         whenever there weren't exactly a multiple of 4 tiles (2 KPIs, or
+         6). flex (not grid) always divides the row's full width evenly
+         across however many .kpi tiles actually exist - 2, 4, 6, whatever
+         - with no fixed column count to get out of sync with the real
+         count. */
+      #kpi-row{ display:flex !important; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+      #kpi-row .kpi{ flex:1 1 0; }
       .kpi{ border-width:1.5px; padding:5px 4px 4px !important; min-width:0; }
       .kpi .label-row{ margin-bottom:2px !important; }
       .kpi .label{ font-size:11px !important; }
@@ -1439,42 +1474,11 @@
       #agg-row .agg-title{ margin-inline-start:0 !important; margin-top:-2px !important; }
       #agg-row .agg-title-text{ font-size:12px; }
       #agg-row .flag{ font-size:10px; padding:1px 7px; }
-      /* Duration tile's unit text: "חוד'" was getting visually cut off in
-         landscape specifically (narrower tile than portrait/desktop) -
-         client's own explicit ask for "ח'" there only. Both spans always
-         exist in the markup (unconditional default further up this file
-         shows the full word everywhere); this landscape-only override is
-         the ONLY place the short form ever shows. */
-      .demo-duration-unit-full{ display:none; }
-      .demo-duration-unit-short{
-        display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-start:3px;
-      }
-      /* Client's own follow-up: move "ח'" out from next to the number and
-         into the "משך" label itself ("משך ח'", then the number on its own)
-         - same shape as every other tile's own label+value split (שלבים/
-         תקציב/etc, all above). Overrides the shared (portrait+landscape)
-         ::before content from just above, landscape only - portrait keeps
-         plain "משך". Naturally much smaller here too (this label's own
-         12px vs the number's 21px it used to sit beside), covering the
-         client's separate "shrink it" ask without needing to target a
-         sub-string of a CSS content value directly. */
-      .demo-mini-col-duration::before{ content:"משך ח'"; }
-      .demo-mini-num .demo-duration-unit-full,
-      .demo-mini-num .demo-duration-unit-short{ display:none; }
       /* Every "i" info icon shrunk 50% - client's own explicit "everywhere"
          ask, not just the per-project title icon above (that one's handled
          separately per view-mode). Covers the KPI tiles' own icons and the
          one on this "אחוזי השלמת ביצוע משוקללים" header. */
       .info-icon{ width:13px !important; height:13px !important; font-size:7px !important; }
-      /* Tooltip direction: engine.css always opens these upward
-         (bottom:135%/122%) - fine on desktop, where there's a tall KPI row
-         with room above it, but the KPI row sits right under a now much
-         shorter landscape header here, so the tooltip had nowhere to open
-         into and rendered clipped/overlapping the header - client's own
-         screenshots. Flipped to open downward instead, where this
-         compressed layout actually has room. */
-      .info-icon:hover::after, .info-icon.tip-open::after{ bottom:auto !important; top:135%; }
-      .info-icon:hover::before, .info-icon.tip-open::before{ bottom:auto !important; top:122%; }
       .kpi > .info-icon{ top:4px !important; right:5px !important; }
       /* Weighted-completion widget's own expand/collapse chevron ("›") -
          shrunk 50% same as the info icon beside it, client's own explicit
@@ -1484,11 +1488,6 @@
          .demo-compact-chevron, so this rule only ever matches the one
          instance that's actually still visible: the agg/weighted row's. */
       #agg-row .agg-title .pc-chevron{ width:13px !important; height:13px !important; font-size:7.5px !important; }
-      /* Info-sheet z-index fix (see the JS block further down this file
-         that toggles this class): raises the CARD holding an open info
-         panel above its sibling cards, so the panel no longer renders
-         under the next card down. */
-      .demo-info-raised{ position:relative; z-index:20; }
       /* Project-status summary line ("5 פרויקטים פעילים...") - client's
          own explicit "must always be exactly one line, whatever the phone
          size" ask. engine.css already ellipsizes this by default, but only
@@ -1503,7 +1502,14 @@
          client's explicit "shrink the gaps inside this one" ask. */
       #agg-bar{ margin:2px 0 0 !important; }
       #agg-bar .tl-row{ margin-bottom:0 !important; }
-      #agg-bar .agg-planned-label{ font-size:10px; }
+      /* engine.css's own top:-22px (relative to the marker, itself already
+         raised via .agg-row .agg-planned-marker{top:-8px}) floated this
+         label all the way up into the title/chevron row above it -
+         confirmed by measurement (full overlap, not just close) - client's
+         own report that opening the widget rides the % text up over the
+         icon and the title text. -4px keeps it just above its own marker
+         line, clear of the title row instead. */
+      #agg-bar .agg-planned-label{ font-size:10px; top:-4px !important; }
       #agg-bar .tl-track{ height:20px !important; }
 
       /* Site header (logo + "PORTFOLIO CONTROL ROOM" + "מרכז בקרת
@@ -1570,11 +1576,37 @@
          more px of room here, expanded landscape only (the collapsed
          state's own margin-top:4px rule above is untouched). */
       .portfolio-panel.expanded .tl-inner{ margin-top:34px !important; }
+      /* Client's own explicit follow-up: still too close to the bar above
+         it even after the extra tl-inner margin - 3 more px down from
+         engine.css's own top:-22px (relative to .today-line). */
+      .today-label{ top:-19px !important; }
     }
     /* Portrait: cards run the full device width - no wasted side margins. */
     @media(max-width:900px) and (orientation:portrait){
       body.demo-compact-active #projects{ margin-inline:calc(50% - 50vw); gap:6px; }
       body.demo-compact-active .demo-mini-bar{ border-radius:0; border-inline:0; }
+      /* Same double-reservation issue landscape had (see the JS pinning
+         .app's margin-top above): body's own unconditional 26px top
+         padding (engine.css) sat on top of .app's own margin-top
+         regardless, so even a tightened .app margin-top alone wouldn't
+         shrink the gap the client is now also asking to reduce here. */
+      body{ padding-top:0 !important; }
+      /* Client's own explicit "the gap between the title and the line
+         under it" ask - engine.css's own header padding (16px top/bottom)
+         is roomier than needed once this is a compact mobile card list,
+         not the full desktop layout it was sized for. */
+      header{ padding-bottom:8px !important; }
+      /* "פרויקטים בתיק" + "(לחצו לפירוט שלבים)": engine.css renders both as
+         inline content in one flex row (.section-title{display:flex}) -
+         fine on a wide desktop line, but on a narrow phone the whole row
+         wraps mid-phrase wherever it runs out of room, not at a sensible
+         boundary - client's own explicit ask for the title to always stay
+         on its own single line, with the note below it on a second,
+         smaller line. flex-wrap here + flex-basis:100% on the note is what
+         forces that specific break, instead of leaving the wrap point to
+         chance. */
+      .section-title{ flex-wrap:wrap; }
+      .section-title-note{ flex-basis:100%; font-size:11px; }
     }
   `;
   document.head.appendChild(style);
@@ -1621,29 +1653,39 @@
   // this overrides an engine.js resync - never a reason for the WRONG
   // final value to persist, so this isn't the fix for the doubling bug
   // itself, just removes a possible source of a brief visible flash.
+  // Portrait phones only: same doubling problem, same fix, client's own
+  // later follow-up asking for the portrait header gap tightened too -
+  // extended here (own smaller GAP, body's own unconditional 26px zeroed
+  // for portrait too below in the stylesheet) rather than widening the
+  // landscape-only check above, so a device-width match alone still can't
+  // silently apply the WRONG orientation's gap value.
   if(window.MutationObserver){
     const app = document.querySelector('.app');
     const header = document.querySelector('header');
     const LANDSCAPE_GAP = 11; // client's own explicit "2mm less than 0.5cm" follow-up
+    const PORTRAIT_GAP = 15; // client's own later "tighten this too" follow-up
     let applyingOwnMargin = false;
-    function landscapeMarginTarget(){
-      return (header.getBoundingClientRect().height + LANDSCAPE_GAP) + 'px';
+    function currentGap(){
+      if(window.matchMedia('(max-width:900px) and (orientation:landscape)').matches) return LANDSCAPE_GAP;
+      if(window.matchMedia('(max-width:900px) and (orientation:portrait)').matches) return PORTRAIT_GAP;
+      return null;
     }
-    function pinAppMarginForLandscape(){
+    function pinAppMarginForMobile(){
       if(!app || !header) return;
-      if(!window.matchMedia('(max-width:900px) and (orientation:landscape)').matches) return;
-      const target = landscapeMarginTarget();
+      const gap = currentGap();
+      if(gap === null) return;
+      const target = (header.getBoundingClientRect().height + gap) + 'px';
       if(app.style.marginTop === target) return;
       applyingOwnMargin = true;
       app.style.setProperty('transition', 'none', 'important');
       app.style.setProperty('margin-top', target, 'important');
       applyingOwnMargin = false;
     }
-    pinAppMarginForLandscape();
-    new MutationObserver(() => { if(!applyingOwnMargin) pinAppMarginForLandscape(); })
+    pinAppMarginForMobile();
+    new MutationObserver(() => { if(!applyingOwnMargin) pinAppMarginForMobile(); })
       .observe(app, { attributes: true, attributeFilter: ['style'] });
-    window.addEventListener('resize', pinAppMarginForLandscape);
-    window.addEventListener('orientationchange', () => setTimeout(pinAppMarginForLandscape, 50));
+    window.addEventListener('resize', pinAppMarginForMobile);
+    window.addEventListener('orientationchange', () => setTimeout(pinAppMarginForMobile, 50));
   }
 
   // ---------- Landscape phones only: size the filter chips as LARGE as
@@ -1731,7 +1773,7 @@
   // definition above for why this can't happen any earlier).
   fitFilterChipsToWidth();
 
-  // ---------- Landscape phones only: the weighted-completion widget's own
+  // ---------- Everywhere: the weighted-completion widget's own
   // "i" info icon must only ever open its tooltip - clicking it must not
   // ALSO toggle the widget's expand/collapse. #tl-bars-clip has its own
   // separate click-to-toggle bubble listener (engine.js) sitting BETWEEN
@@ -1750,7 +1792,6 @@
   // tooltip listener - all three coexist without conflict since each only
   // touches its own class).
   document.addEventListener('click', (e) => {
-    if(!window.matchMedia('(max-width:900px) and (orientation:landscape)').matches) return;
     if(e.target.closest('#tl-bars-clip .info-icon')){
       const panel = document.getElementById('timeline-wrap');
       const owner = panel && panel.closest('.portfolio-panel');
@@ -1758,18 +1799,18 @@
     }
   });
 
-  // ---------- Landscape phones only: shorten the "i" tooltip's own
-  // auto-dismiss delay from engine.js's hardcoded 3000ms to the client's
-  // own explicit 1500ms ask. Piggybacks on the exact same click that opens
-  // it - this listener runs after engine.js's own (added later, same
-  // bubble phase, same node), so by the time it runs, .tip-open already
-  // reflects THIS click's own result - and just races a shorter timer of
-  // its own. engine.js's own 3s timer still fires too, but by then this
-  // one has already removed the class, so it's a harmless no-op.
-  // Clicking the icon again to close it early already works with no
-  // change needed (engine.js's own toggle handles that).
+  // ---------- Everywhere: shorten the "i" tooltip's own auto-dismiss
+  // delay from engine.js's hardcoded 3000ms to the client's own explicit
+  // 1500ms ask - originally landscape-mobile only, now applied everywhere
+  // per the client's own "in every case" follow-up. Piggybacks on the
+  // exact same click that opens it - this listener runs after engine.js's
+  // own (added later, same bubble phase, same node), so by the time it
+  // runs, .tip-open already reflects THIS click's own result - and just
+  // races a shorter timer of its own. engine.js's own 3s timer still fires
+  // too, but by then this one has already removed the class, so it's a
+  // harmless no-op. Clicking the icon again to close it early already
+  // works with no change needed (engine.js's own toggle handles that).
   document.addEventListener('click', (e) => {
-    if(!window.matchMedia('(max-width:900px) and (orientation:landscape)').matches) return;
     const icon = e.target.closest('.info-icon');
     if(!icon) return;
     clearTimeout(icon._demoTipTimer);
@@ -1781,25 +1822,27 @@
     }
   });
 
-  // ---------- Landscape phones only: two more click-handling corrections
-  // to engine.js's own info-sheet behavior, both client-reported. These
-  // two, unlike the fix above, both only ever ADD behavior (close a panel,
-  // raise a z-index) without needing to cancel anything engine.js already
-  // does, so a document-level CAPTURE-phase listener works cleanly here -
-  // same technique engine.js itself already uses for its own outside-
-  // click-closes-everything listener (see its own comment there), chosen
-  // so this runs before that inline .info-sheet onclick="stopPropagation()"
+  // ---------- Everywhere: two more click-handling corrections to
+  // engine.js's own info-sheet behavior, both client-reported - originally
+  // landscape-mobile only, now applied everywhere per the client's own
+  // follow-up (both the "closes on an extra click inside" behavior and the
+  // z-index fix were reported on desktop too). These two, unlike the fix
+  // above, both only ever ADD behavior (close a panel, raise a z-index)
+  // without needing to cancel anything engine.js already does, so a
+  // document-level CAPTURE-phase listener works cleanly here - same
+  // technique engine.js itself already uses for its own outside-click-
+  // closes-everything listener (see its own comment there), chosen so this
+  // runs before that inline .info-sheet onclick="stopPropagation()"
   // (engine.css's own comment on .info-sheet references it) has a chance
   // to matter - that inline handler only fires once the event bubbles back
   // up through the sheet itself, well after capture phase has already run.
   document.addEventListener('click', (e) => {
-    if(!window.matchMedia('(max-width:900px) and (orientation:landscape)').matches) return;
     // 1) A per-project info panel, once open, must close on an ADDITIONAL
     //    tap anywhere inside it too - engine.js's own listener deliberately
     //    keeps it open for clicks inside (correct for a mouse, where
-    //    there's no other reason to click inside except reading), but a
-    //    touch user on a small screen expects any further tap to dismiss
-    //    it, this client's own explicit ask for landscape mobile.
+    //    there's no other reason to click inside except reading), but the
+    //    client's own explicit ask is for a further click to always close
+    //    it, everywhere.
     const sheet = e.target.closest('.info-sheet');
     if(sheet){
       const owner = sheet.closest('[data-has-info]');
