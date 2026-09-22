@@ -762,6 +762,15 @@
        edge, landing well short of that extreme while still opening up
        real space between the two values compared to the original 8px gap. */
     #kpi-row:has(.kpi:nth-child(2):last-child) .kpi-mini-row-big{ justify-content:space-around !important; }
+    /* Desktop only (explicit min-width so this can never interact with any
+       of the mobile-scoped gap overrides below, each already !important
+       and specific to its own breakpoint): client's own explicit "-25%"
+       ask on the gap between every KPI tile's own mini-value pair
+       (בביצוע/בתכנון, בפועל/פער, etc, not just the 2-KPI case above) -
+       engine.css's own 76px desktop default, reduced to 57px. */
+    @media(min-width:901px){
+      .kpi-mini-row-big{ gap:57px !important; }
+    }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:1.25em !important; }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-label{ font-size:1.1em !important; }
     body.demo-compact-active .project-card{ display:none; }
@@ -1209,7 +1218,15 @@
       .demo-mini-col-progress{ grid-column:1 / -1; display:grid; grid-template-columns:1fr auto; column-gap:8px; align-items:baseline; }
       .demo-mini-col-progress::before{ content:"התקדמות"; grid-column:1 / -1; }
       .demo-mini-col-progress .demo-mini-num{ font-size:24px; grid-column:1 / -1; justify-self:start; }
-      .demo-mini-col-progress .demo-progress-track{ background:rgba(0,0,0,.28); }
+      /* rgba(0,0,0,.28) (was) is a flat black overlay regardless of theme -
+         looked fine against dark mode's own dark surface, but light mode's
+         real .progress-track (engine.css, the desktop card) uses
+         var(--surface-2), which SWAPS to a light, near-white color there -
+         client's own explicit "why isn't the empty part white like
+         desktop" ask. var(--surface-2) here instead matches desktop
+         exactly in both themes, rather than a hardcoded value that only
+         happened to look right in one of them. */
+      .demo-mini-col-progress .demo-progress-track{ background:var(--surface-2); }
       .demo-mini-col-progress .demo-progress-track{ grid-column:1 / -1; margin:4px 0 3px; }
       .demo-mini-col-progress .demo-mini-sub:last-child{ text-align:left; }
 
@@ -1287,11 +1304,27 @@
       .demo-mini-col-progress .demo-mini-num { font-size:22px; grid-column:2; justify-self:start; }
       .demo-mini-col-progress .demo-progress-track { margin:3px 0 2px; }
       .demo-mini-col-progress .demo-mini-sub:not(:last-child) { display:none; }
-      .demo-mini-col-progress .demo-mini-sub:last-child { grid-column:3; grid-row:1; text-align:left; font-size:11px; }
+      /* min-width:0 is the actual fix - a grid item's default min-width is
+         auto (= its own content's full intrinsic width), which overrides
+         the 1fr track sizing below and lets long text (e.g. a delta
+         reading "פער: +100.0%" on a real project, longer than this
+         session's own shorter test values) push past the card's own right
+         edge instead of shrinking to fit - client's own screenshot.
+         overflow/ellipsis is the visible fallback if it's ever still too
+         tight even after shrinking. */
+      .demo-mini-col-progress .demo-mini-sub:last-child {
+        grid-column:3; grid-row:1; text-align:left; font-size:11px;
+        min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      }
       .demo-mini-col-progress { grid-template-columns:auto auto 1fr; }
       .demo-mini-col-progress .demo-progress-track { grid-column:1 / -1; }
       .demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-sub { display:none; }
-      .demo-mini-col-phases, .demo-mini-col-duration { display:none; }
+      /* Phases/duration tiles used to be dropped entirely here, to fit
+         inside the old fixed 227px card height - now that height is
+         auto (see the card-height fix above, same media query), there's
+         no more fixed budget forcing anything to be cut, and the client's
+         own report ("where did משך/שלבים go??") confirms they were missed,
+         not intentionally simplified away. */
       .demo-mini-col-budget, .demo-mini-col-spent, .demo-mini-col-remaining { flex-direction:row; align-items:baseline; justify-content:space-between; gap:3px; padding:3px 6px; }
       .demo-mini-col-budget::before, .demo-mini-col-spent::before, .demo-mini-col-remaining::before { order:0; margin-bottom:0; font-size:10.5px; }
       .demo-mini-col-flag .flag { font-size:11px; padding:2px 10px; }
@@ -1711,6 +1744,15 @@
     @media(max-width:900px) and (orientation:portrait){
       body.demo-compact-active #projects{ margin-inline:calc(50% - 50vw); gap:6px; }
       body.demo-compact-active .demo-mini-bar{ border-radius:0; border-inline:0; }
+      /* Client's own explicit ask: the sort/filter box read narrower than
+         the (deliberately edge-to-edge, no side margins) project cards
+         right below it - same treatment here for the same full-width
+         match, padding bumped up to keep its own content clear of the
+         now-flush edges instead of nearly touching them. */
+      .demo-toolbar-wrap{
+        margin-inline:calc(50% - 50vw) !important; border-inline:0 !important;
+        border-radius:0 !important; padding-inline:16px !important;
+      }
       /* engine.css's own 26px left/right padding on the weighted-completion
          widget's outer panel is sized for the full desktop layout - on a
          narrow phone it eats real width from the bars/timeline inside
@@ -1740,17 +1782,16 @@
          is roomier than needed once this is a compact mobile card list,
          not the full desktop layout it was sized for. */
       header{ padding-bottom:8px !important; }
-      /* "פרויקטים בתיק" + "(לחצו לפירוט שלבים)": engine.css renders both as
-         inline content in one flex row (.section-title{display:flex}) -
-         fine on a wide desktop line, but on a narrow phone the whole row
-         wraps mid-phrase wherever it runs out of room, not at a sensible
-         boundary - client's own explicit ask for the title to always stay
-         on its own single line, with the note below it on a second,
-         smaller line. flex-wrap here + flex-basis:100% on the note is what
-         forces that specific break, instead of leaving the wrap point to
-         chance. */
-      .section-title{ flex-wrap:wrap; }
-      .section-title-note{ flex-basis:100%; font-size:11px; }
+      /* "פרויקטים בתיק" + "(לחצו לפירוט שלבים)": an earlier round forced
+         these onto two lines (title, then the note below it) after engine.
+         css's own single flex row was wrapping mid-phrase at some earlier
+         point in this file's own history. Re-measured now, after several
+         other rounds' worth of space-saving changes elsewhere on this
+         same header: the whole phrase needs 278px and has 335px available
+         - it already fits on one line with real room to spare, so the
+         forced two-line split is gone too, straight back to engine.css's
+         own plain flex row - client's own explicit "put it all back on
+         one line" ask. */
     }
   `;
   document.head.appendChild(style);
