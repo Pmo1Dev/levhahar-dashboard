@@ -754,7 +754,14 @@
        relative to whatever base size is already active at a given
        breakpoint (13px mobile landscape, 26px narrow portrait, 38px
        desktop) instead of needing its own copy of every breakpoint. */
-    #kpi-row:has(.kpi:nth-child(2):last-child) .kpi-mini-row-big{ justify-content:space-between !important; }
+    /* space-between (first attempt) pushed the two values all the way to
+       the tile's own edges - client's own explicit "went too far, that's
+       the extreme, I asked for ~50% more space, not the maximum possible"
+       correction. space-around leaves real breathing room at the outer
+       edges too (half a gap on each side, not zero) instead of edge-to-
+       edge, landing well short of that extreme while still opening up
+       real space between the two values compared to the original 8px gap. */
+    #kpi-row:has(.kpi:nth-child(2):last-child) .kpi-mini-row-big{ justify-content:space-around !important; }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:1.25em !important; }
     #kpi-row:has(.kpi:nth-child(2):last-child) .mini-label{ font-size:1.1em !important; }
     body.demo-compact-active .project-card{ display:none; }
@@ -772,12 +779,18 @@
        earlier attempt read right, ended up left because .ltr-num's own
        direction:ltr makes DOM/source order = visual left-to-right order
        regardless of this span's own internal direction:rtl, which only
-       affects glyph order WITHIN the span itself) - margin-inline-END
-       (not -start) is what actually opens a gap towards the number that
-       now follows it. */
+       affects glyph order WITHIN the span itself) - margin-inline-START,
+       not -end: logical properties resolve against THIS element's own
+       direction, not the LTR parent's. Since this span itself is
+       direction:rtl, ITS "end" side is the physical LEFT - the wrong
+       side, since the number that actually needs the gap follows on the
+       physical RIGHT. A first attempt used -end and, confirmed by direct
+       measurement, produced a real, reproducible ZERO px gap despite
+       computing to a non-zero value - not a rounding issue, the wrong
+       physical side entirely. */
     .demo-duration-unit-full{ display:none; }
     .demo-duration-unit-short{
-      display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-end:3px;
+      display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-start:3px;
       /* em, not a fixed px - client's own explicit "small" ask, scaled
          relative to whatever size the number itself ends up at in each
          context (the progress tile's own number is bigger than the
@@ -1243,13 +1256,21 @@
       .demo-compact-chevron{ font-size:17px; }
     }
 
-    /* Portrait phones: every project card is a fixed 10cm (~378 css px at
-       96dpi) tall, full width - same Blocks language, compacted (tile
-       sub-lines and the "planned" line dropped, single-line phase) so all
-       blocks fit; the dropped detail is in the opened full card. */
+    /* Portrait phones: every project card is full width - same Blocks
+       language, compacted (tile sub-lines and the "planned" line dropped,
+       single-line phase) so it stays compact; the dropped detail is in the
+       opened full card. Used to be a fixed 227px (~10cm) height too, but
+       unlike landscape's own multi-column grid (where a fixed height made
+       every card in the same ROW match its tallest neighbor), portrait's
+       cards are single-column - nothing else ever sat beside one to
+       justify matching its height to, so a fixed value here only ever
+       left dead space at the bottom of any card whose real content needed
+       less than 227px - client's own screenshot, confirmed. height:auto
+       lets each one size to its own real content instead, same fix
+       landscape already got for the equivalent problem there. */
     @media(max-width:900px) and (orientation:portrait){
       body.demo-compact-active .demo-mini-bar:not(.demo-mini-hidden) {
-        height:227px; box-sizing:border-box; padding:3px 4px; gap:3px; grid-auto-rows:min-content; align-content:start;
+        height:auto; box-sizing:border-box; padding:3px 4px; gap:3px; grid-auto-rows:min-content; align-content:start;
       }
       .demo-mini-identity, .demo-mini-col-progress, .demo-mini-col-phases, .demo-mini-col-duration, .demo-mini-col-budget, .demo-mini-col-spent, .demo-mini-col-remaining, .demo-mini-col-phase, .demo-mini-col-flag {
         padding:3px 8px;
@@ -1639,12 +1660,21 @@
          14px but the row stayed 30px. */
       #agg-bar .tl-row{ height:16px !important; margin-bottom:0 !important; }
       #agg-bar .tl-track{ height:14px !important; }
-      /* engine.css's own top:-20px (measured from the bar's own track)
-         reached up far enough to overlap the chevron sitting above it once
-         everything here got this compressed - client's own report,
-         confirmed by measurement (~2.5px real overlap). -10px keeps it
-         floating just above the bar without reaching that far. */
-      #agg-bar .agg-year-endpoint{ font-size:9px; top:-10px; }
+      /* This corner year label (on the always-visible summary bar
+         specifically - NOT the year AXIS row inside the expanded
+         individual-rows section below, which is untouched and still shows
+         the full year range) turned out impossible to position robustly:
+         first it overlapped the chevron above it (an earlier fix moved it
+         up), then - client's own follow-up screenshot - it started
+         colliding with the planned-% label floating just beside it
+         instead, since both sit in the same small area and the planned
+         marker's own horizontal position shifts with the real data (a low
+         weighted-planned% pushes its marker, and this label, right up
+         against this same corner). Hidden here instead of chasing another
+         position that only works for some data values - the expanded
+         axis row already shows this same start/end year information
+         without the collision risk. */
+      #agg-bar .agg-year-endpoint{ display:none; }
       #agg-bar .agg-planned-marker{ height:14px !important; }
       /* .timeline-axis/.today-line are only visibility:hidden (not
          display:none) while collapsed - engine.css keeps them, so they
@@ -1681,6 +1711,24 @@
     @media(max-width:900px) and (orientation:portrait){
       body.demo-compact-active #projects{ margin-inline:calc(50% - 50vw); gap:6px; }
       body.demo-compact-active .demo-mini-bar{ border-radius:0; border-inline:0; }
+      /* engine.css's own 26px left/right padding on the weighted-completion
+         widget's outer panel is sized for the full desktop layout - on a
+         narrow phone it eats real width from the bars/timeline inside
+         (measured: ~29px of unused margin on each side, bars only using
+         277 of the panel's own 335px) - client's own explicit "why not
+         widen it to the sides" ask. */
+      .portfolio-panel{ padding-inline:10px !important; }
+      /* engine.css's own -18px left/right margin on #agg-bar (a 900px-
+         breakpoint rule, its own deliberate partial "bleed toward the
+         edge" calibrated against THAT 26px padding above) started
+         overflowing past the panel's own edge once padding shrunk to 10px
+         - confirmed by measurement, the bar's own box actually extending
+         5px beyond the panel on each side. Neutralized here so the
+         reduced padding above is what actually controls the bar's width,
+         not fighting a margin still assuming the old, wider padding. */
+      #agg-bar{ margin-left:0 !important; margin-right:0 !important; }
+      #agg-row .pc-top-row{ margin-left:0 !important; margin-right:0 !important; }
+      #agg-row .agg-title{ margin-right:0 !important; }
       /* Same double-reservation issue landscape had (see the JS pinning
          .app's margin-top above): body's own unconditional 26px top
          padding (engine.css) sat on top of .app's own margin-top
@@ -1758,7 +1806,7 @@
   if(window.MutationObserver){
     const app = document.querySelector('.app');
     const header = document.querySelector('header');
-    const LANDSCAPE_GAP = 11; // client's own explicit "2mm less than 0.5cm" follow-up
+    const LANDSCAPE_GAP = 38; // client's own explicit "1cm" follow-up (~37.8px)
     const PORTRAIT_GAP = 15; // client's own later "tighten this too" follow-up
     let applyingOwnMargin = false;
     function currentGap(){
