@@ -1533,18 +1533,39 @@
          box actually had - true centering is meaningless once content
          already overflows its own box) AND "numbers should be ~1.5x
          bigger" (below) - which needs the extra height to actually fit. */
+      /* flex-direction:column is the actual centering fix (added here) -
+         an earlier rule (body.demo-classic .demo-mini-col-phases and
+         others, flex-direction:row) was still active underneath this one:
+         align-items/justify-content here only ever override THEIR OWN
+         properties, they don't imply a direction, so ROW persisted despite
+         this rule's own align-items:center - meaning that "center" was
+         actually centering the label+number pair TOGETHER as one row
+         group, not the number on its own within the tile. In row
+         direction, a narrower number sitting next to a wider label lands
+         off-center by design, exactly the ~15px gap measurement kept
+         showing no matter how this rule's align-items/justify-content
+         were tuned. column restores label-above-number-below, where
+         centering each one independently is what align-items:center
+         actually does. */
       body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress){
-        width:100%; height:46px; box-sizing:border-box; justify-content:center;
-        align-items:center; padding:4px 6px !important;
+        width:100%; height:46px; box-sizing:border-box; flex-direction:column; justify-content:center;
+        align-items:center; padding:4px 6px !important; text-align:center;
       }
       body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-num,
       body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-sub{
         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
       }
-      /* Numbers/percentages ~1.5x bigger - client's own explicit "there's
-         room, at least 1.5x" ask (measured 14px before -> 21px). */
+      /* Numbers/percentages further enlarged (21px -> 27px) and explicitly
+         centered - client's own follow-up ask to match the KPI row's own
+         centered/enlarged treatment. text-align:center (added here,
+         overriding the shared block's own text-align:right) is the actual
+         fix for the centering part: align-items:center on the column
+         already centers each child AS A BLOCK, but a number narrower than
+         its own label still hugs text-align's side within that block -
+         confirmed by measurement, a real ~15px off-center gap for a short
+         value like "5" next to a wider label like "שלבים". */
       body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-num{
-        font-size:21px !important;
+        font-size:27px !important; text-align:center;
       }
       /* Progress tile's own compact stacking - label+value on one line,
          track right below, gap line dropped (redundant with the label
@@ -1555,7 +1576,15 @@
         height:auto; display:grid; grid-template-columns:auto auto 1fr; column-gap:6px; align-items:baseline;
       }
       body.demo-classic .demo-mini-col-progress::before{ grid-column:1; }
-      body.demo-classic .demo-mini-col-progress .demo-mini-num{ grid-column:2; justify-self:start; font-size:24px; }
+      /* Enlarged to match the phases/duration tiles' own bump just above
+         (24px -> 30px, same +25%-ish step) - client's own explicit ask
+         grouped all three together. Left at justify-self:start (not
+         centered): this tile's own layout has the number sitting directly
+         beside its label on one row, not stacked below it in a small
+         square tile the way phases/duration are - centering it would put
+         real empty space between the label and the number instead of
+         matching the KPI-row look this ask is modeled on. */
+      body.demo-classic .demo-mini-col-progress .demo-mini-num{ grid-column:2; justify-self:start; font-size:30px; }
       body.demo-classic .demo-mini-col-progress .demo-progress-track{ grid-column:1 / -1; margin:2px 0 1px; }
       body.demo-classic .demo-mini-col-progress .demo-mini-sub:not(:last-child){ display:none; }
       body.demo-classic .demo-mini-col-progress .demo-mini-sub:last-child{ grid-column:3; grid-row:1; text-align:left; font-size:10px; }
