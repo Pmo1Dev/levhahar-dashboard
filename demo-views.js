@@ -246,7 +246,7 @@
         <span class="demo-mini-sub">${counts.critical} קריטיים</span>
       </span>
       <span class="demo-mini-col-duration demo-mini-tile">
-        <span class="demo-mini-num ltr-num">${monthsOf(p)} <span class="demo-duration-unit-full">חוד'</span><span class="demo-duration-unit-short">ח'</span></span>
+        <span class="demo-mini-num ltr-num"><span class="demo-duration-unit-full">חוד'</span><span class="demo-duration-unit-short">ח'</span> ${monthsOf(p)}</span>
         <span class="demo-mini-sub ltr-num">${durationSharePct(p)}% מהתיק</span>
       </span>
       ${budgetTilesHTML}
@@ -256,6 +256,19 @@
         ${statusPill(p)}
       </span>
     `;
+    // Client's own explicit re-ask, both orientations: the chevron used to
+    // float as its own absolutely-positioned circle in the card's top
+    // corner (the "outside the grid" comment used to live here) - now
+    // moved into .demo-mini-title-toprow, right before the title itself,
+    // so it sits inline next to the project name instead (this needs an
+    // actual DOM move, not just new CSS - the two elements start out
+    // several nesting levels apart, and CSS alone can't reposition
+    // something across containers like that). DOM-first in this RTL
+    // layout = rightmost, so this insertion order alone is what puts the
+    // chevron to the title's right, matching the ask directly.
+    const chevronEl = bar.querySelector('.demo-mini-col-chevron');
+    const titleBox = bar.querySelector('.demo-mini-title-box');
+    if(chevronEl && titleBox) titleBox.parentNode.insertBefore(chevronEl, titleBox);
     // Accessibility gap found in this round's review: the mini-bar is the
     // ONLY way to expand a project into its full card (there's no other
     // control that does it), but as a plain <div> with a click listener it
@@ -726,6 +739,24 @@
        (a sibling card's own translucent background showing its text
        through the panel underneath it), not just landscape mobile. */
     .demo-info-raised{ position:relative; z-index:20; }
+    /* Whenever the whole KPI row only ever has exactly 2 tiles (e.g. Lev
+       HaHar's own portfolio) each tile is much wider than the usual 4-per-
+       row case everything else here was sized for - engine.css's own
+       justify-content:center for the two mini-values inside (בביצוע/
+       בתכנון and the like) leaves them clustered in the middle with real
+       empty space on both outer edges instead of using that width. Client's
+       own explicit ask, for both desktop and mobile: spread them to the
+       tile's own edges and size them up - :has() detects "exactly 2 .kpi
+       tiles" structurally (2nd child is also the last child) instead of
+       needing a client-specific selector, so this keeps working correctly
+       if a client's own active/future project counts ever change which
+       KPI tiles engine.js renders. em-based sizing (not a fixed px) scales
+       relative to whatever base size is already active at a given
+       breakpoint (13px mobile landscape, 26px narrow portrait, 38px
+       desktop) instead of needing its own copy of every breakpoint. */
+    #kpi-row:has(.kpi:nth-child(2):last-child) .kpi-mini-row-big{ justify-content:space-between !important; }
+    #kpi-row:has(.kpi:nth-child(2):last-child) .mini-value-big{ font-size:1.25em !important; }
+    #kpi-row:has(.kpi:nth-child(2):last-child) .mini-label{ font-size:1.1em !important; }
     body.demo-compact-active .project-card{ display:none; }
     .demo-mini-bar{ display:none; }
     /* Duration tile's unit text: both spans always exist in the markup
@@ -734,12 +765,25 @@
        (digits first, then "ח'" to their left - e.g. "58 ח'"). This rule
        must NOT live inside any @media(max-width:900px) block - this whole
        compact-card markup renders at every width, including desktop, not
-       just mobile. RTL+isolate so the geresh/letter render on the
-       correct side of the (LTR-rendered) number instead of picking up the
-       surrounding ltr-num container's own direction. */
+       just mobile. RTL+isolate so the geresh/letter render on the correct
+       side of the (LTR-rendered) number instead of picking up the
+       surrounding ltr-num container's own direction. The template puts
+       this span BEFORE the number now (client's own correction - an
+       earlier attempt read right, ended up left because .ltr-num's own
+       direction:ltr makes DOM/source order = visual left-to-right order
+       regardless of this span's own internal direction:rtl, which only
+       affects glyph order WITHIN the span itself) - margin-inline-END
+       (not -start) is what actually opens a gap towards the number that
+       now follows it. */
     .demo-duration-unit-full{ display:none; }
     .demo-duration-unit-short{
-      display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-start:3px;
+      display:inline; direction:rtl; unicode-bidi:isolate; margin-inline-end:3px;
+      /* em, not a fixed px - client's own explicit "small" ask, scaled
+         relative to whatever size the number itself ends up at in each
+         context (the progress tile's own number is bigger than the
+         others') instead of one fixed size that would read differently
+         small depending on which tile it's in. */
+      font-size:0.6em; font-weight:700; vertical-align:baseline;
     }
     body.demo-compact-active .demo-mini-bar{ display:flex; }
     body.demo-compact-active .demo-mini-bar.demo-mini-hidden{ display:none; }
@@ -799,15 +843,39 @@
     body.demo-compact-active .demo-mini-bar:hover{
       filter:brightness(1.12); box-shadow:0 2px 10px rgba(0,0,0,.18);
     }
-    .demo-compact-chevron{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--accent); color:var(--surface); font-weight:900; font-size:14px; flex:none; }
-    .demo-mini-col-chevron{ width:22px; flex:none; }
+    /* Client's own explicit re-ask, both orientations: now sits inline
+       right before the project title (moved there in JS - see the comment
+       by that move) instead of floating as its own absolutely-positioned
+       circle in the card's corner. width/height:1em means "this element's
+       own font-size" for a square icon that scales itself automatically -
+       every place .demo-mini-title-main's own font-size changes per
+       breakpoint below, a matching .demo-compact-chevron font-size line
+       keeps this the same size as the title's own letters, per the ask,
+       without needing to inherit across sibling elements (not possible in
+       plain CSS) or restructure the title's own sizing. margin-inline-end
+       is the "one letter's width" gap before the title that follows it in
+       DOM (this element comes first = rightmost in RTL, i.e. exactly
+       "to the right of the project name" once combined with the DOM move). */
+    .demo-compact-chevron{
+      display:inline-flex; align-items:center; justify-content:center; width:1em; height:1em;
+      border-radius:50%; background:var(--accent); color:var(--surface); font-weight:900;
+      font-size:20px; flex:none; margin-inline-end:1ch;
+    }
+    .demo-mini-col-chevron{ flex:none; }
     /* Dim/outline by default, per the same "i" circle visual language as
        .pc-title-info-icon (border + faint color, no fill) - filled in with
        the accent color only once actually pinned, so its own state is
        clear at a glance without needing a separate label. */
+    /* Client's own explicit ask: same diameter as the status pill next to
+       it (.activity-pill, "בביצוע"/"בתכנון"/etc). That pill is never
+       resized at any breakpoint in either this file or engine.css - a
+       constant font-size:11px + padding:2px 9px, measuring 18px tall
+       everywhere - so 18px here (replacing the various breakpoint-specific
+       sizes below, none of which happened to match it) is correct at
+       every width too, not just this one. */
     .demo-mini-pin{
-      width:24px; height:24px; flex:none; padding:0; border-radius:50%;
-      display:flex; align-items:center; justify-content:center; font-size:12px;
+      width:18px; height:18px; flex:none; padding:0; border-radius:50%;
+      display:flex; align-items:center; justify-content:center; font-size:11px;
       background:transparent; border:1.5px solid var(--border); cursor:pointer;
       opacity:.55; filter:grayscale(1); transition:opacity .12s ease, filter .12s ease, border-color .12s ease;
     }
@@ -863,11 +931,17 @@
        narrower topline-derived width, it naturally gets most of that 230px
        (minus the info icon's own ~20px when present) before wrapping. */
     .demo-mini-title-main{ color:var(--text); font-weight:700; font-size:20px; white-space:normal; line-height:1.2; }
-    /* gap:0 on the parent (.demo-mini-title-toprow above) + no margin here -
-       client's own spec: the info icon should sit flush against the title
-       text, "like it's just another letter of the name", not a separate
-       element with breathing room around it. */
-    .demo-mini-title-toprow .pc-title-info-icon{ flex:none; width:18px; height:18px; font-size:12px; margin-inline-start:2px; }
+    /* Client's own explicit correction to the earlier "flush against the
+       title, no gap" spec: now sized to the title's own letter height
+       (width/height:1em - see .demo-compact-chevron's own comment above
+       for why em, same reasoning applies here) with a real one-letter gap
+       before the title. margin-inline-start (not -end) because this icon
+       comes AFTER the title in DOM - in this RTL layout that puts it to
+       the title's LEFT, so its own "start" (= right, facing back toward
+       the title in RTL) is the side that actually needs the gap. */
+    .demo-mini-title-toprow .pc-title-info-icon{
+      flex:none; width:1em; height:1em; font-size:20px; margin-inline-start:1ch;
+    }
     /* align-self:flex-start (RTL cross-start = right) - the actual fix for
        "dates not aligned to the name". This element also carries the
        shared .ltr-num class (engine.css: direction:ltr; display:inline-
@@ -1013,10 +1087,20 @@
        shape (never a circle/diamond) so it still reads as its own,
        different kind of control from the plain round icon buttons below
        it. */
+    /* color:var(--shell-text) (not --text) is deliberate here - these
+       buttons float directly on the page's own constant-dark outer shell
+       background (position:fixed, not inside a card surface), which never
+       switches for light mode (see engine.css's own comment on --shell-bg:
+       "the outer chrome stays dark navy in both light and dark app
+       themes"). --text DOES switch to a dark color for light mode's own
+       light card surfaces - using it here meant dark-on-dark, invisible,
+       in light mode specifically - client's own screenshot, confirmed
+       reproducible by checking engine.css's light-mode variable block
+       directly (it redefines --text and --border, not --shell-text). */
     .demo-fab{
       font-family:inherit; font-size:13px; font-weight:700; padding:10px 18px; border-radius:20px;
       border:1.5px solid rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.14);
-      backdrop-filter:blur(6px); color:var(--text); box-shadow:0 4px 14px rgba(0,0,0,.25);
+      backdrop-filter:blur(6px); color:var(--shell-text); box-shadow:0 4px 14px rgba(0,0,0,.25);
       cursor:pointer; white-space:nowrap; transition:filter .12s ease;
     }
     /* "↑"/"↓" - plain transparent ghost icon buttons: a circle with just a
@@ -1024,7 +1108,7 @@
        for something more minimal than a solid button here. */
     .demo-fab-icon{
       width:38px; height:38px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
-      font-size:16px; background:rgba(255,255,255,.05); border:1.5px solid var(--border);
+      font-size:16px; background:rgba(255,255,255,.05); border:1.5px solid var(--shell-text-dim);
     }
     .demo-fab:hover{ filter:brightness(1.15); }
 
@@ -1081,19 +1165,17 @@
         padding:7px 10px; box-sizing:border-box; min-width:0;
       }
 
-      /* Chevron floats at the card's far (left) top corner, outside the grid. */
-      .demo-mini-col-chevron.demo-compact-chevron{
-        position:absolute; top:10px; inset-inline-end:10px; width:30px; height:30px; font-size:16px; z-index:2;
-      }
-
       /* Block 1: identity (pin + status + type, title + info, dates). */
-      .demo-mini-identity{ grid-column:1 / -1; width:auto; gap:5px; padding-inline-end:44px; }
+      /* padding-inline-end:44px (was) reserved room for the chevron's old
+         floating position in this same corner - no longer needed now that
+         it sits inline next to the title instead of overlapping anything. */
+      .demo-mini-identity{ grid-column:1 / -1; width:auto; gap:5px; }
       .demo-mini-identity-topline{ flex-wrap:wrap; row-gap:4px; }
       .demo-mini-type-text{ width:auto; flex:1 1 0; min-width:0; }
       .demo-mini-title-box{ max-width:100%; }
       .demo-mini-title-main{ font-size:18px; }
-      .demo-mini-pin{ width:34px; height:34px; font-size:14px; }
-      .demo-mini-title-toprow .pc-title-info-icon{ width:26px; height:26px; font-size:14px; }
+      .demo-compact-chevron{ font-size:18px; }
+      .demo-mini-title-toprow .pc-title-info-icon{ font-size:18px; }
 
       /* Blocks with a small label on top and the value below. */
       .demo-mini-tile{ height:auto; min-height:0; width:auto; flex:none; align-items:flex-start; text-align:right; gap:2px; }
@@ -1158,6 +1240,7 @@
     @media(max-width:560px) and (orientation:portrait){
       body.demo-compact-active .demo-mini-bar{ padding:8px; gap:6px; }
       .demo-mini-title-main{ font-size:17px; }
+      .demo-compact-chevron{ font-size:17px; }
     }
 
     /* Portrait phones: every project card is a fixed 10cm (~378 css px at
@@ -1176,9 +1259,8 @@
       .demo-mini-type-text { flex:1 1 0; min-width:0; order:0; -webkit-line-clamp:1; font-size:12.5px; }
       .demo-mini-title-main { font-size:16px; line-height:1.15; }
       .demo-mini-title-dates { font-size:12.5px; }
-      .demo-mini-pin { width:25px; height:25px; }
-      .demo-mini-title-toprow .pc-title-info-icon { width:22px; height:22px; font-size:12px; }
-      .demo-mini-col-chevron.demo-compact-chevron { width:28px; height:28px; top:7px; inset-inline-end:8px; }
+      .demo-mini-title-toprow .pc-title-info-icon { font-size:16px; }
+      .demo-compact-chevron{ font-size:16px; }
       .demo-mini-col-progress { grid-template-columns:auto 1fr; column-gap:8px; align-items:center; }
       .demo-mini-col-progress::before { grid-column:1; }
       .demo-mini-col-progress .demo-mini-num { font-size:22px; grid-column:2; justify-self:start; }
@@ -1218,9 +1300,8 @@
       body:not(.demo-classic) .demo-mini-type-text { flex:1 1 0; min-width:0; order:0; -webkit-line-clamp:1; font-size:11.5px; }
       body:not(.demo-classic) .demo-mini-title-main { font-size:15px; line-height:1.15; }
       body:not(.demo-classic) .demo-mini-title-dates { font-size:11px; }
-      body:not(.demo-classic) .demo-mini-pin { width:11px; height:11px; font-size:6px; }
-      body:not(.demo-classic) .demo-mini-title-toprow .pc-title-info-icon { width:9px; height:9px; font-size:5px; }
-      body:not(.demo-classic) .demo-mini-col-chevron.demo-compact-chevron { width:24px; height:24px; top:5px; inset-inline-end:8px; }
+      body:not(.demo-classic) .demo-mini-title-toprow .pc-title-info-icon { font-size:15px; }
+      body:not(.demo-classic) .demo-compact-chevron{ font-size:15px; }
       body:not(.demo-classic) .demo-mini-col-progress { grid-column:span 4; order:1; }
       body:not(.demo-classic) .demo-mini-col-progress { grid-template-columns:auto auto 1fr; column-gap:8px; align-items:center; }
       body:not(.demo-classic) .demo-mini-col-progress::before { grid-column:1; }
@@ -1254,21 +1335,25 @@
        instead of the cards actually filling it. Grid's repeat(N,1fr)
        divides the exact available width N ways with zero remainder. */
     @media(max-width:900px) and (orientation:landscape){
+      /* align-items:start (was) let every card size itself to its own
+         content and sit flush at the row's own top - a card with a longer
+         title/more tiles reads visibly taller than its neighbors. A single
+         GLOBAL fixed height (this file's own first attempt at "every card
+         the same width AND height") fixed the mismatch but at the cost of
+         real, visible empty space at the bottom of every shorter card -
+         client's own screenshots, several rows deep of dead space - since
+         it had to be tall enough for the SINGLE tallest card anywhere in
+         the whole list, not just its own row. Removing this override
+         (stretch is Grid's own default for align-items) instead makes
+         every card fill its own ROW's height - uniform WITHIN each row,
+         where cards actually sit side by side and get compared, without
+         forcing that same height onto every other row too. */
       body.demo-compact-active.demo-classic #projects {
-        display:grid; grid-template-columns:repeat(3,1fr); align-items:start; gap:8px;
+        display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
       }
       body.demo-compact-active.demo-classic .project-card.demo-mini-open { grid-column:1 / -1; }
-      /* height:auto (was) let every card size itself to its own content -
-         a card with a longer title/more tiles reads visibly taller than
-         its neighbors. Client's own explicit "every card the same width
-         AND height" ask - a fixed height (matching the same fixed-height
-         convention portrait already uses), set to the tallest card's own
-         real natural height (measured directly - a guessed value clipped
-         real content badly here first) plus a small margin, so shorter
-         cards grow to match instead of every card shrinking to the
-         shortest one's height and clipping. */
       body.demo-compact-active.demo-classic .demo-mini-bar:not(.demo-mini-hidden) {
-        display:grid; width:auto; height:500px; box-sizing:border-box; margin-bottom:0;
+        display:grid; width:auto; box-sizing:border-box; margin-bottom:0;
         grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding:5px; grid-auto-rows:min-content;
       }
     }
@@ -1279,13 +1364,12 @@
       body.demo-classic .demo-mini-identity, body.demo-classic .demo-mini-col-progress, body.demo-classic .demo-mini-col-phases, body.demo-classic .demo-mini-col-duration, body.demo-classic .demo-mini-col-budget, body.demo-classic .demo-mini-col-spent, body.demo-classic .demo-mini-col-remaining, body.demo-classic .demo-mini-col-phase, body.demo-classic .demo-mini-col-flag {
         padding:3px 7px; border-radius:8px;
       }
-      body.demo-classic .demo-mini-identity { grid-column:1 / -1; order:0; padding-inline-end:38px; gap:3px; }
-      body.demo-classic .demo-mini-col-chevron.demo-compact-chevron { width:26px; height:26px; top:8px; inset-inline-end:8px; }
-      body.demo-classic .demo-mini-pin { width:13px; height:13px; font-size:6.5px; }
-      body.demo-classic .demo-mini-title-toprow .pc-title-info-icon { width:10px; height:10px; font-size:5.5px; }
+      body.demo-classic .demo-mini-identity { grid-column:1 / -1; order:0; gap:3px; }
+      body.demo-classic .demo-mini-title-toprow .pc-title-info-icon { font-size:15px; }
       body.demo-classic .demo-mini-identity-topline { gap:4px; }
       body.demo-classic .demo-mini-type-text { font-size:11.5px; -webkit-line-clamp:1; flex:1 1 100%; order:5; }
       body.demo-classic .demo-mini-title-main { font-size:15px; }
+      body.demo-classic .demo-compact-chevron{ font-size:15px; }
       body.demo-classic .demo-mini-title-dates { font-size:11.5px; }
       body.demo-classic .demo-mini-col-progress { grid-column:1 / -1; order:1; }
       body.demo-classic .demo-mini-col-progress .demo-mini-num { font-size:18px; }
@@ -1367,9 +1451,11 @@
         font-size:var(--fc-font, 12px) !important;
       }
       #projects-filter-bar{ gap:var(--fc-gap, 6px) !important; }
-      /* The expand chevron is removed in landscape - the whole card/row is
-         already its own click target, client's own explicit request. */
-      .demo-mini-col-chevron.demo-compact-chevron{ display:none !important; }
+      /* The chevron used to be entirely removed in landscape (the whole
+         card/row is already its own click target regardless, so it was
+         purely decorative) - client's own later, explicit re-ask brought
+         it back inline next to the title instead (see the JS move and the
+         .demo-compact-chevron rules above for the how/why). */
       body.demo-classic .demo-mini-identity{ padding-inline-end:8px; }
       body:not(.demo-classic) .demo-mini-identity{ padding-inline-end:8px; }
       /* Every per-project tile is forced to the exact same box - client's
@@ -1499,17 +1585,27 @@
         display:block; max-width:100%; font-size:12px;
       }
       /* The weighted-completion bar's own internal spacing specifically -
-         client's explicit "shrink the gaps inside this one" ask. */
-      #agg-bar{ margin:2px 0 0 !important; }
+         client's explicit "shrink the gaps inside this one" ask. Margin
+         bumped back up from the original 2px (client's own follow-up
+         suggestion, after the -4px label fix below still left it just
+         barely clipping the bar's own top edge - see that rule's own
+         comment for the exact math) specifically to make room for the
+         planned-% label floating above the bar without also needing to
+         re-touch the title/chevron spacing above it again. */
+      #agg-bar{ margin:10px 0 0 !important; }
       #agg-bar .tl-row{ margin-bottom:0 !important; }
       /* engine.css's own top:-22px (relative to the marker, itself already
          raised via .agg-row .agg-planned-marker{top:-8px}) floated this
          label all the way up into the title/chevron row above it -
          confirmed by measurement (full overlap, not just close) - client's
          own report that opening the widget rides the % text up over the
-         icon and the title text. -4px keeps it just above its own marker
-         line, clear of the title row instead. */
-      #agg-bar .agg-planned-label{ font-size:10px; top:-4px !important; }
+         icon and the title text. The first attempt (-4px) cleared the
+         title but - confirmed by a client screenshot AND by re-measuring -
+         its own bottom edge still dipped 2px into the bar/track below it.
+         -6px combined with the extra #agg-bar margin-top above clears
+         both: title-side gap grows to a comfortable 9px, and the label's
+         own bottom now lands exactly flush with the track's top edge. */
+      #agg-bar .agg-planned-label{ font-size:10px; top:-6px !important; }
       #agg-bar .tl-track{ height:20px !important; }
 
       /* Site header (logo + "PORTFOLIO CONTROL ROOM" + "מרכז בקרת
