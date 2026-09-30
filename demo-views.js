@@ -1878,6 +1878,12 @@
     @media(min-width:901px){
       #kpi-row .kpi{ container-type:inline-size; }
       #kpi-row#kpi-row .kpi .value{ font-size:76px !important; }
+      /* Titles and bottom labels pinned here too - engine.css shrinks them (16px / 12.5px)
+         whenever the infra-quantity tiles are on (.kpi-row-cube, arielgabay-demo), which
+         broke the shared ratios once the big number is 76px everywhere. Same formula as the
+         mobile block below at --kb:76px: 16px at a 4-per-row tile, 17.6px at 2-per-row. */
+      #kpi-row#kpi-row .kpi .label{ font-size:21px !important; }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big .mini .mini-label{ font-size:calc(14.56px + 0.435cqi) !important; }
       #kpi-row#kpi-row .kpi .kpi-mini-row-big{
         gap:calc(max(16px, 41.3cqi - 60.3px) * var(--kpi-fit, 1)) !important;
         justify-content:center !important;
@@ -1917,6 +1923,9 @@
     }
     @media(max-width:900px) and (orientation:landscape){
       #kpi-row#kpi-row .kpi{ --kb:44px; }
+      /* At most 4 tiles per row, like the desktop grid - 8 tiles (arielgabay-demo) squeezed
+         into one 760px row left 85px tiles the numbers overflowed. */
+      #kpi-row#kpi-row .kpi{ flex:1 1 calc(25% - 6px); }
     }
   `;
   document.head.appendChild(style);
