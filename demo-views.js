@@ -1864,8 +1864,72 @@
          own plain flex row - client's own explicit "put it all back on
          one line" ask. */
     }
+    /* KPI tiles on desktop - client's explicit ask: the old (v2.5) look, made dynamic for
+       wider tiles. Reference: v2.5's 4-tile layout, a 356px tile (330px content box) with
+       a 76px big number, bottom pair at 38px (50%) and a 76px gap between the pair.
+       Both grow linearly with the tile's own width up to the 2-tile layout of the real
+       clients (724px tile, 698px content): bottom numbers 38px -> 47px (50% -> 62% of the
+       big number - 62% is the golden-ratio step 76/1.618, the largest a secondary figure can
+       get while still reading as secondary; the tile only gets wider, not taller, so the
+       extra width mostly goes to the gap), gap 76px -> 228px (x3). Big number stays 76px. --kpi-fit (set by
+       fitKpiMinis below) shrinks the pair and its gap together only if they would
+       otherwise come closer than ~5mm (19px) to the tile's edges. Doubled ID so it
+       outranks every earlier desktop !important size/gap in this file. Mobile untouched. */
+    @media(min-width:901px){
+      #kpi-row .kpi{ container-type:inline-size; }
+      #kpi-row#kpi-row .kpi .value{ font-size:76px !important; }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big{
+        gap:calc(max(16px, 41.3cqi - 60.3px) * var(--kpi-fit, 1)) !important;
+        justify-content:center !important;
+      }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big .mini-value-big{
+        font-size:calc(clamp(38px, 2.446cqi + 29.93px, 47px) * var(--kpi-fit, 1)) !important;
+      }
+    }
   `;
   document.head.appendChild(style);
+  // ---------- Desktop KPI tiles: keep the bottom number pair inside the tile ----------
+  // The CSS above sizes the pair and its gap from the tile's width; this only steps in
+  // when that would bring the pair closer than ~5mm (19px) to the tile's edges (client's
+  // explicit "never outside the KPI" rule), shrinking numbers and gap by one factor.
+  // The factor is derived from the pair's natural (unshrunk) width, so re-running it
+  // (on resize, font load, re-render) always lands on the same value instead of
+  // oscillating.
+  function fitKpiMinis(){
+    const desktop = matchMedia('(min-width:901px)').matches;
+    document.querySelectorAll('#kpi-row .kpi-mini-row-big').forEach(row => {
+      const tile = row.closest('.kpi');
+      if(!desktop || !tile){ row.style.removeProperty('--kpi-fit'); return; }
+      const current = parseFloat(row.style.getPropertyValue('--kpi-fit')) || 1;
+      const kids = [...row.children];
+      const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+      const need = kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
+      const avail = tile.getBoundingClientRect().width - 2 * 19;
+      const fit = Math.min(1, avail / (need / current));
+      if(Math.abs(fit - current) < 0.002) return;
+      if(fit >= 1) row.style.removeProperty('--kpi-fit');
+      else row.style.setProperty('--kpi-fit', fit.toFixed(4));
+    });
+  }
+  let kpiFitQueued = false;
+  function queueKpiFit(){
+    if(kpiFitQueued) return;
+    kpiFitQueued = true;
+    requestAnimationFrame(() => { kpiFitQueued = false; fitKpiMinis(); });
+  }
+  // Web fonts landing late change the numbers' widths without any resize/DOM event,
+  // so watch the tiles' own sizes too
+  const kpiSizeWatch = new ResizeObserver(queueKpiFit);
+  function watchKpiTiles(){
+    kpiSizeWatch.disconnect();
+    document.querySelectorAll('#kpi-row .kpi, #kpi-row .kpi-mini-row-big .mini').forEach(el => kpiSizeWatch.observe(el));
+    queueKpiFit();
+  }
+  window.addEventListener('resize', queueKpiFit);
+  const kpiRowEl = document.getElementById('kpi-row');
+  if(kpiRowEl) new MutationObserver(watchKpiTiles).observe(kpiRowEl, { childList:true, subtree:true });
+  watchKpiTiles();
+
   // Now that the stylesheet above is actually in <head>, fabBar has its
   // real flex/padding layout and getBoundingClientRect().width inside
   // positionFabBar() reads its true ~83px size - safe to position it for
