@@ -1947,19 +1947,25 @@
     const desktop = matchMedia('(min-width:901px)').matches;
     document.querySelectorAll('#kpi-row .kpi-mini-row-big').forEach(row => {
       const tile = row.closest('.kpi');
-      if(!tile){ row.style.removeProperty('--kpi-fit'); return; }
-      const current = parseFloat(row.style.getPropertyValue('--kpi-fit')) || 1;
+      // Always measure the pair at its natural (unshrunk) size. The old "need / current"
+      // shortcut assumed everything scales with the factor, but the labels don't: once a
+      // transient zero/narrow tile width (DevTools device toggle, orientation change,
+      // first paint) drove the factor to ~0, the labels alone kept it there and the
+      // bottom numbers vanished (client-reported bug, 2026-10-01).
+      row.style.removeProperty('--kpi-fit');
+      const tileW = tile ? tile.getBoundingClientRect().width : 0;
+      if(!tileW) return;
       const kids = [...row.children];
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
       const tails = [...row.querySelectorAll('.num-small')].reduce((sum, el) => sum + el.getBoundingClientRect().width, 0);
       const need = kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + tails + gap * (kids.length - 1);
       const bigNum = tile.querySelector('.value');
       const edge = desktop ? 19 : 0.25 * (bigNum ? parseFloat(getComputedStyle(bigNum).fontSize) : 44);
-      const avail = tile.getBoundingClientRect().width - 2 * edge;
-      const fit = Math.min(1, avail / (need / current));
-      if(Math.abs(fit - current) < 0.002) return;
-      if(fit >= 1) row.style.removeProperty('--kpi-fit');
-      else row.style.setProperty('--kpi-fit', fit.toFixed(4));
+      const avail = tileW - 2 * edge;
+      if(!(need > 0) || avail >= need) return;
+      // Floor at 0.5 so a bad measurement can never make the numbers disappear
+      const fit = Math.max(0.5, avail / need).toFixed(4);
+      row.style.setProperty('--kpi-fit', fit);
     });
   }
   let kpiFitQueued = false;
