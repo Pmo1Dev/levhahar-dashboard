@@ -1927,6 +1927,9 @@
          into one 760px row left 85px tiles the numbers overflowed. */
       #kpi-row#kpi-row .kpi{ flex:1 1 calc(25% - 6px); }
     }
+    /* Trims the "1" glyph's extra right-side space - see tightenKpiOnes() */
+    #kpi-row .kpi-d1{ margin-right:-0.13em; }
+    #kpi-row .kpi-d1.kpi-d1-end{ margin-right:0; }
   `;
   document.head.appendChild(style);
   // ---------- Desktop KPI tiles: keep the bottom number pair inside the tile ----------
@@ -1943,7 +1946,38 @@
   // under their label. A negative margin equal to the tail's own width takes the tail
   // out of the centering; it's stored in em, so it keeps matching when --kpi-fit or a
   // breakpoint rescales the font. The tail's width is still counted in the fit below.
+  // Heebo's digits are all one width, but the "1" glyph is thin and sits left in its
+  // slot, leaving ~0.13em of extra space on its right - "106.1K" read as "106.1 K"
+  // (client-reported, 2026-10-01). Each "1" in a KPI number gets that space trimmed.
+  function tightenKpiOnes(){
+    document.querySelectorAll('#kpi-row .value, #kpi-row .mini-value-big').forEach(el => {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while(walker.nextNode()){
+        const n = walker.currentNode;
+        if(n.nodeValue.includes('1') && !n.parentElement.classList.contains('kpi-d1')) nodes.push(n);
+      }
+      nodes.forEach(n => {
+        const frag = document.createDocumentFragment();
+        n.nodeValue.split(/(1)/).forEach(part => {
+          if(part === '1'){
+            const s = document.createElement('span');
+            s.className = 'kpi-d1';
+            s.textContent = '1';
+            frag.appendChild(s);
+          } else if(part) frag.appendChild(document.createTextNode(part));
+        });
+        n.parentNode.replaceChild(frag, n);
+      });
+      // A "1" that ends the number has nothing after it to close up to - trimming it
+      // would only pull the number off-center
+      const ones = el.querySelectorAll('.kpi-d1');
+      ones.forEach(s => s.classList.remove('kpi-d1-end'));
+      if(ones.length && el.textContent.trimEnd().endsWith('1')) ones[ones.length - 1].classList.add('kpi-d1-end');
+    });
+  }
   function centerKpiDigits(){
+    tightenKpiOnes();
     document.querySelectorAll('#kpi-row .num-small').forEach(el => {
       el.style.marginRight = '';
       const w = el.getBoundingClientRect().width;
