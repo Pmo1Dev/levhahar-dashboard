@@ -1886,6 +1886,38 @@
         font-size:calc(clamp(38px, 2.446cqi + 29.93px, 47px) * var(--kpi-fit, 1)) !important;
       }
     }
+    /* KPI tiles on mobile (portrait + landscape) - client's explicit ask: the same logic
+       as the desktop block above, not separate hand-picked sizes. Everything is expressed
+       relative to the big number (--kb): title 27.6% (desktop 21/76), bottom labels
+       19.16% + 0.435cqi (desktop 16px at a 330px tile -> 17.6px at 698px), bottom numbers
+       50% -> 62% and the gap between them 1x -> 3x of --kb, both linear in the tile's own
+       width-to-big-number ratio exactly like desktop (desktop's 2.446cqi+29.93px and
+       41.3cqi-60.3px are these same formulas at --kb:76px). Replaces the old mobile rules
+       where the 2-tile sites (Ariel, levhahar) had bottom labels (17.6px) bigger than
+       their own numbers (20px). Floors of 11px/10px keep the smallest text readable. */
+    @media(max-width:900px){
+      #kpi-row#kpi-row .kpi{
+        container-type:inline-size; --kb:52px;
+        padding:calc(0.12 * var(--kb)) 10px calc(0.14 * var(--kb)) !important;
+      }
+      #kpi-row#kpi-row .kpi .label-row{ margin-bottom:calc(0.12 * var(--kb)) !important; }
+      #kpi-row#kpi-row .kpi .label{ font-size:max(11px, calc(0.276 * var(--kb))) !important; }
+      #kpi-row#kpi-row .kpi .value{ font-size:var(--kb) !important; line-height:1.05 !important; }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big{
+        margin-top:2px !important; justify-content:center !important;
+        gap:calc(max(0.21 * var(--kb), 41.32cqi - 0.793 * var(--kb)) * var(--kpi-fit, 1)) !important;
+      }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big .mini .mini-label{
+        font-size:max(10px, calc(0.1916 * var(--kb) + 0.435cqi)) !important;
+      }
+      #kpi-row#kpi-row .kpi .kpi-mini-row-big .mini-value-big{
+        line-height:normal !important;
+        font-size:calc(clamp(0.5 * var(--kb), 2.479cqi + 0.392 * var(--kb), 0.62 * var(--kb)) * var(--kpi-fit, 1)) !important;
+      }
+    }
+    @media(max-width:900px) and (orientation:landscape){
+      #kpi-row#kpi-row .kpi{ --kb:44px; }
+    }
   `;
   document.head.appendChild(style);
   // ---------- Desktop KPI tiles: keep the bottom number pair inside the tile ----------
@@ -1895,16 +1927,35 @@
   // The factor is derived from the pair's natural (unshrunk) width, so re-running it
   // (on resize, font load, re-render) always lands on the same value instead of
   // oscillating.
+  // Mobile uses the same fit, with the edge margin scaled to its smaller big number
+  // (desktop's 19px is 25% of its 76px big number).
+  // Digit centering (all widths, client's explicit ask): the small tail after a number
+  // (".0%", ".7M") used to count toward its centering, so the big digits sat off-center
+  // under their label. A negative margin equal to the tail's own width takes the tail
+  // out of the centering; it's stored in em, so it keeps matching when --kpi-fit or a
+  // breakpoint rescales the font. The tail's width is still counted in the fit below.
+  function centerKpiDigits(){
+    document.querySelectorAll('#kpi-row .num-small').forEach(el => {
+      el.style.marginRight = '';
+      const w = el.getBoundingClientRect().width;
+      const fs = parseFloat(getComputedStyle(el).fontSize) || 1;
+      el.style.marginRight = (-w / fs).toFixed(3) + 'em';
+    });
+  }
   function fitKpiMinis(){
+    centerKpiDigits();
     const desktop = matchMedia('(min-width:901px)').matches;
     document.querySelectorAll('#kpi-row .kpi-mini-row-big').forEach(row => {
       const tile = row.closest('.kpi');
-      if(!desktop || !tile){ row.style.removeProperty('--kpi-fit'); return; }
+      if(!tile){ row.style.removeProperty('--kpi-fit'); return; }
       const current = parseFloat(row.style.getPropertyValue('--kpi-fit')) || 1;
       const kids = [...row.children];
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-      const need = kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
-      const avail = tile.getBoundingClientRect().width - 2 * 19;
+      const tails = [...row.querySelectorAll('.num-small')].reduce((sum, el) => sum + el.getBoundingClientRect().width, 0);
+      const need = kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + tails + gap * (kids.length - 1);
+      const bigNum = tile.querySelector('.value');
+      const edge = desktop ? 19 : 0.25 * (bigNum ? parseFloat(getComputedStyle(bigNum).fontSize) : 44);
+      const avail = tile.getBoundingClientRect().width - 2 * edge;
       const fit = Math.min(1, avail / (need / current));
       if(Math.abs(fit - current) < 0.002) return;
       if(fit >= 1) row.style.removeProperty('--kpi-fit');
