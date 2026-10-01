@@ -2004,6 +2004,39 @@
         font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
       }
     }
+    /* ---------- Design-check round 1 (found by the automatic layout check, all 5 sites) ---------- */
+    /* Captions over a progress marker slide sideways (--cap-x, set by guardLayout below)
+       just enough to stay inside their tile when the marker sits near the tile's edge */
+    .demo-mini-bar .demo-progress-marker::after{ transform:translate(calc(-50% + var(--cap-x, 0px)), -3px); }
+    .progress-marker-label::after{ transform:translateX(calc(-50% + var(--cap-x, 0px))); }
+    /* The dashed today-line breaks where it would run through a project's name or the
+       "last update" caption (client's explicit ask): both get the panel's own colour as a
+       background and sit above the line, so the line shows only around them */
+    #individual-rows .tl-label{
+      z-index:6; background:var(--panel-bg, transparent);
+      box-shadow:3px 0 0 var(--panel-bg, transparent), -3px 0 0 var(--panel-bg, transparent);
+    }
+    #individual-rows .tl-row:first-child .agg-planned-marker::after{
+      background:var(--panel-bg, transparent);
+      box-shadow:3px 0 0 var(--panel-bg, transparent), -3px 0 0 var(--panel-bg, transparent);
+    }
+    /* The open panel's project list was capped at 600px - 11 projects need more, and the
+       last name was cut */
+    .portfolio-panel.expanded #individual-rows{ max-height:1400px !important; }
+    @media(max-width:900px) and (orientation:landscape){
+      /* The small one-line tiles were 46px high - less than their label plus a 27px number
+         need, so the numbers were cut at the bottom. 58px fits both. */
+      body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress){ height:58px; }
+      body.demo-classic .demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-num{ line-height:1.1 !important; flex:none; }
+      /* The forecast line under an open card moves to its own row when it does not fit
+         beside the current-phase line, instead of being cut at its end */
+      .project-card .pc-next{ flex-wrap:wrap; }
+      .project-card .pc-next .impact-flag{ flex:none; overflow:visible; }
+    }
+    @media(max-width:900px) and (orientation:portrait){
+      /* Open-card numbers: the same 24px on every site (the 10-tile variant kept 28px) */
+      .pc-metrics-cube .metric .m-value{ font-size:24px; }
+    }
     /* Trims the "1" glyph's extra right-side space - see tightenKpiOnes() */
     #kpi-row .kpi-d1{ margin-right:-0.13em; }
     #kpi-row .kpi-d1.kpi-d1-end{ margin-right:0; }
@@ -2145,6 +2178,71 @@
   }
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(queueLastUpdateCaption);
   placeLastUpdateCaption();
+
+  // ---------- Layout guard: nothing leaves its box, nothing sits on something else ----------
+  // Positions here depend on each site's own data (a marker at 4% or at 96% of its bar), so
+  // they are measured rather than assumed: captions and labels slide back inside their box,
+  // and a year label that the planned-% label would cover is hidden.
+  function guardLayout(){
+    const panel = document.querySelector('.portfolio-panel');
+    if(panel) panel.style.setProperty('--panel-bg', getComputedStyle(panel).backgroundColor);
+    const ctx = document.createElement('canvas').getContext('2d');
+    const inside = (left, right, box, pad) => {
+      if(right > box.right - pad) return box.right - pad - right;
+      if(left < box.left + pad) return box.left + pad - left;
+      return 0;
+    };
+    // pseudo-element captions: their width is measured from their own font
+    const caption = (el, tile) => {
+      if(!el || !tile || !tile.offsetWidth) return;
+      const cs = getComputedStyle(el, '::after');
+      if(cs.display === 'none') return;
+      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      const half = ctx.measureText('עדכון אחרון').width / 2, r = el.getBoundingClientRect(), cx = r.left + r.width / 2;
+      el.style.setProperty('--cap-x', Math.round(inside(cx - half, cx + half, tile.getBoundingClientRect(), 3)) + 'px');
+    };
+    document.querySelectorAll('.demo-mini-bar .demo-progress-marker').forEach(el => caption(el, el.closest('.demo-mini-col-progress')));
+    document.querySelectorAll('.project-card .progress-marker-label').forEach(el => caption(el, el.closest('.metric')));
+    // a number wider than its small tile steps its font down until it fits (never below 16px)
+    document.querySelectorAll('.demo-mini-tile:not(.demo-mini-col-progress) .demo-mini-num').forEach(el => {
+      el.style.removeProperty('font-size');
+      if(!el.clientWidth) return;
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      while(el.scrollWidth > el.clientWidth && size > 16){ size -= 1; el.style.setProperty('font-size', size + 'px', 'important'); }
+    });
+    // real labels of the weighted panel
+    const clip = document.getElementById('tl-bars-clip');
+    const slide = el => {
+      if(!el || !clip || !clip.offsetWidth) return null;
+      el.style.translate = 'none';
+      const r = el.getBoundingClientRect();
+      const dx = Math.round(inside(r.left, r.right, clip.getBoundingClientRect(), 0));
+      el.style.translate = dx + 'px 0';
+      return { left:r.left + dx, right:r.right + dx, top:r.top, bottom:r.bottom };
+    };
+    // a project whose bar ends near the panel's edge: its name stays inside the panel
+    document.querySelectorAll('#individual-rows .tl-label').forEach(slide);
+    slide(document.querySelector('#tl-bars-clip .today-label'));
+    const lab = slide(document.querySelector('#agg-bar .agg-planned-label'));
+    document.querySelectorAll('#agg-bar .agg-year-endpoint').forEach(y => {
+      const r = y.getBoundingClientRect();
+      const covered = lab && r.width && Math.min(lab.right, r.right) - Math.max(lab.left, r.left) > -4 && Math.min(lab.bottom, r.bottom) - Math.max(lab.top, r.top) > 0;
+      y.style.visibility = covered ? 'hidden' : '';
+    });
+  }
+  let guardQueued = false;
+  function queueGuard(){
+    if(guardQueued) return;
+    guardQueued = true;
+    requestAnimationFrame(() => { guardQueued = false; guardLayout(); });
+  }
+  window.addEventListener('resize', queueGuard);
+  // opening a card or the panel changes what is on screen; the open animation ends within 400ms
+  document.addEventListener('click', () => { setTimeout(queueGuard, 60); setTimeout(queueGuard, 450); });
+  const guardRoot = document.querySelector('.app') || document.body;
+  new MutationObserver(queueGuard).observe(guardRoot, { childList:true, subtree:true });
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(queueGuard);
+  guardLayout();
 
   // Now that the stylesheet above is actually in <head>, fabBar has its
   // real flex/padding layout and getBoundingClientRect().width inside
