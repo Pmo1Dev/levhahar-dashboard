@@ -1949,13 +1949,14 @@
     #agg-bar#agg-bar .agg-planned-label{ top:-21px !important; color:#d6dee6 !important; }
     #tl-bars-clip .today-line{ top:49px !important; border-right:2px dashed #8ab4f8 !important; }
     #tl-bars-clip .today-label{ top:-21px !important; font-size:12px !important; font-weight:800 !important; color:#8ab4f8 !important; }
-    .portfolio-panel.expanded #individual-rows{ margin-top:29px !important; padding-top:30px !important; }
+    .portfolio-panel.expanded #individual-rows{ margin-top:29px !important; padding-top:calc(30px + var(--lu-lift, 0px)) !important; }
     #individual-rows .agg-planned-marker{
       top:-5px !important; bottom:auto !important; height:23px !important; width:2px !important;
     }
     #individual-rows .tl-row:first-child .agg-planned-marker::after{
       content:'עדכון אחרון'; position:absolute; bottom:100%; left:50%;
-      transform:translate(-50%,-3px); font-family:var(--font-mono); font-size:12px;
+      transform:translate(calc(-50% + var(--lu-shift, 0px)), calc(-3px - var(--lu-lift, 0px)));
+      font-family:var(--font-mono); font-size:12px;
       font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
     }
     /* "Last update" caption over the progress marker of every closed row/card, all views */
@@ -1991,14 +1992,15 @@
       #tl-bars-clip .today-label{
         top:-17px !important; font-size:10px !important; font-weight:800 !important; color:#8ab4f8 !important;
       }
-      .portfolio-panel.expanded #individual-rows{ margin-top:24px !important; padding-top:26px !important; }
+      .portfolio-panel.expanded #individual-rows{ margin-top:24px !important; padding-top:calc(26px + var(--lu-lift, 0px)) !important; }
       #individual-rows .tl-label{ transform:translateY(-15px) !important; }
       #individual-rows .agg-planned-marker{
         top:-5px !important; bottom:auto !important; height:23px !important; width:2px !important;
       }
       #individual-rows .tl-row:first-child .agg-planned-marker::after{
         content:'עדכון אחרון'; position:absolute; bottom:100%; left:50%;
-        transform:translate(-50%,-3px); font-family:var(--font-mono); font-size:10px;
+        transform:translate(calc(-50% + var(--lu-shift, 0px)), calc(-3px - var(--lu-lift, 0px)));
+        font-family:var(--font-mono); font-size:10px;
         font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
       }
     }
@@ -2104,6 +2106,45 @@
   const kpiRowEl = document.getElementById('kpi-row');
   if(kpiRowEl) new MutationObserver(watchKpiTiles).observe(kpiRowEl, { childList:true, subtree:true });
   watchKpiTiles();
+
+  // ---------- Weighted panel: "last update" caption above the top project's name ----------
+  // The caption used to sit right over the top project's marker, in the same band as that
+  // project's name - with a low planned % (marker near the bar's start) it landed on the
+  // name and ran out of the panel (levhahar). It is now lifted one line, to 3px above the
+  // name, on every site (client's explicit ask), and nudged sideways only as far as needed
+  // to stay inside the panel. Both offsets are measured, so they follow each view's sizes.
+  function placeLastUpdateCaption(){
+    const rows = document.getElementById('individual-rows');
+    const row = rows && rows.querySelector('.tl-row');
+    const marker = row && row.querySelector('.agg-planned-marker');
+    const name = row && row.querySelector('.tl-label');
+    if(!marker || !name) return;
+    const m = marker.getBoundingClientRect(), n = name.getBoundingClientRect(), box = rows.getBoundingClientRect();
+    if(!box.width) return;
+    const cs = getComputedStyle(marker, '::after');
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    const half = ctx.measureText('עדכון אחרון').width / 2, cx = m.left + m.width / 2;
+    let shift = 0;
+    if(cx + half > box.right - 2) shift = box.right - 2 - (cx + half);
+    else if(cx - half < box.left + 2) shift = box.left + 2 - (cx - half);
+    rows.style.setProperty('--lu-lift', Math.max(0, Math.round(m.top - n.top)) + 'px');
+    rows.style.setProperty('--lu-shift', Math.round(shift) + 'px');
+  }
+  let luQueued = false;
+  function queueLastUpdateCaption(){
+    if(luQueued) return;
+    luQueued = true;
+    requestAnimationFrame(() => { luQueued = false; placeLastUpdateCaption(); });
+  }
+  window.addEventListener('resize', queueLastUpdateCaption);
+  const luWrap = document.getElementById('timeline-wrap');
+  if(luWrap){
+    new MutationObserver(queueLastUpdateCaption).observe(luWrap, { childList:true, subtree:true });
+    new ResizeObserver(queueLastUpdateCaption).observe(luWrap);
+  }
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(queueLastUpdateCaption);
+  placeLastUpdateCaption();
 
   // Now that the stylesheet above is actually in <head>, fabBar has its
   // real flex/padding layout and getBoundingClientRect().width inside
