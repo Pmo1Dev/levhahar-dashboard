@@ -1927,6 +1927,81 @@
          into one 760px row left 85px tiles the numbers overflowed. */
       #kpi-row#kpi-row .kpi{ flex:1 1 calc(25% - 6px); }
     }
+    /* "Last update" instead of "today" (client's explicit ask, pmo1-demo first): progress
+       is only as fresh as the project's last data update, so the marker that the bars
+       are compared against is labelled as that update - a "today" label made an
+       un-updated project look behind. The marker's position (planned % stored at the
+       last update) is unchanged; only its label is. */
+    /* No position override here: engine.css positions this label absolutely over the
+       marker, which already makes it the containing block for the ::after below. */
+    .progress-marker-label{ visibility:hidden; }
+    .progress-marker-label::after{
+      content:'עדכון אחרון'; visibility:visible; position:absolute; top:0; left:50%;
+      transform:translateX(-50%); white-space:nowrap;
+    }
+    /* Weighted-completion panel, desktop + portrait: the same design the client approved
+       for landscape (block right below, which overrides these with its own smaller
+       sizes) at engine.css's full-size metrics - 30px aggregate bar, 18px project bars,
+       12px labels, a 26px year axis (16px in portrait). */
+    #agg-bar#agg-bar .agg-planned-marker{
+      top:-5px !important; height:35px !important; width:2px !important; background:#d6dee6 !important;
+    }
+    #agg-bar#agg-bar .agg-planned-label{ top:-21px !important; color:#d6dee6 !important; }
+    #tl-bars-clip .today-line{ top:49px !important; border-right:2px dashed #8ab4f8 !important; }
+    #tl-bars-clip .today-label{ top:-21px !important; font-size:12px !important; font-weight:800 !important; color:#8ab4f8 !important; }
+    .portfolio-panel.expanded #individual-rows{ margin-top:29px !important; padding-top:30px !important; }
+    #individual-rows .agg-planned-marker{
+      top:-5px !important; bottom:auto !important; height:23px !important; width:2px !important;
+    }
+    #individual-rows .tl-row:first-child .agg-planned-marker::after{
+      content:'עדכון אחרון'; position:absolute; bottom:100%; left:50%;
+      transform:translate(-50%,-3px); font-family:var(--font-mono); font-size:12px;
+      font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
+    }
+    /* "Last update" caption over the progress marker of every closed row/card, all views */
+    body .demo-mini-bar .demo-mini-col-progress .demo-progress-track{ margin-top:14px !important; }
+    .demo-mini-bar .demo-progress-marker::after{
+      content:'עדכון אחרון'; position:absolute; bottom:100%; left:50%;
+      transform:translate(-50%,-3px); font-family:var(--font-mono); font-size:9px;
+      font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
+    }
+    /* A not-yet-started project's marker sits on the tile's edge (0%) - no caption
+       there, it would spill out of the tile */
+    .demo-mini-bar .demo-progress-marker[style*="right:0%"]::after,
+    .demo-mini-bar .demo-progress-marker[style*="right:0.0%"]::after{ display:none; }
+    @media(max-width:900px) and (orientation:portrait){
+      #tl-bars-clip .today-line{ top:39px !important; }
+      /* Closed project cards (portrait): the same "last update" caption over the
+         progress marker that the open card shows, 3px above the line, with the track
+         pushed down to give the caption its own band under the big percentage. */
+      body .demo-mini-bar .demo-mini-col-progress .demo-progress-track{ margin-top:15px !important; }
+    }
+    /* Weighted-completion panel, mobile landscape (approved mockup 4): the aggregate
+       planned line/label go white-gray and the line spans the whole bar plus 5px above;
+       the per-project markers keep the accent colour, span their bars the same way and
+       get one "last update" caption above the top project; the calendar today-line turns
+       pastel blue with its label under the years; all lines are 2px. */
+    @media(max-width:900px) and (orientation:landscape){
+      #agg-bar#agg-bar{ margin-top:30px !important; }
+      #agg-bar#agg-bar .agg-planned-marker{
+        top:-5px !important; height:35px !important; width:2px !important; background:#d6dee6 !important;
+      }
+      #agg-bar#agg-bar .agg-planned-label{ top:-17px !important; color:#d6dee6 !important; }
+      #tl-bars-clip .today-line{ top:44px !important; border-right:2px dashed #8ab4f8 !important; }
+      #tl-bars-clip .today-label{
+        top:-17px !important; font-size:10px !important; font-weight:800 !important; color:#8ab4f8 !important;
+      }
+      .portfolio-panel.expanded #individual-rows{ margin-top:24px !important; padding-top:26px !important; }
+      #individual-rows .tl-label{ transform:translateY(-15px) !important; }
+      #individual-rows .agg-planned-marker{
+        top:-5px !important; bottom:auto !important; height:23px !important; width:2px !important;
+      }
+      #individual-rows .tl-row:first-child .agg-planned-marker::after{
+        content:'עדכון אחרון'; position:absolute; bottom:100%; left:50%;
+        transform:translate(-50%,-3px); font-family:var(--font-mono); font-size:10px;
+        font-weight:800; color:var(--accent); white-space:nowrap; line-height:1;
+      }
+    }
     /* Trims the "1" glyph's extra right-side space - see tightenKpiOnes() */
     #kpi-row .kpi-d1{ margin-right:-0.13em; }
     #kpi-row .kpi-d1.kpi-d1-end{ margin-right:0; }
