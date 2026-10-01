@@ -38,7 +38,15 @@
   }
   function pctOf(p){ return Math.round(p.overallActualPct ?? 0); }
   function plannedPctOf(p){ return Math.round(p.overallPlannedPct ?? 0); }
-  function phaseName(p){ return p.nextTask ? p.nextTask.name : '-'; }
+  // The phases the project is working on now - the engine's own computed list (the first
+  // one is shown, the rest become a "+N" counter); older engines fall back to nextTask.
+  function phasesNow(p){ return typeof currentPhases === 'function' ? currentPhases(p) : (p.nextTask ? [p.nextTask] : []); }
+  function phaseName(p){ const a = phasesNow(p); return a.length ? a.map(ph => ph.name).join(' · ') : '-'; }
+  function phaseCellHTML(p){
+    const a = phasesNow(p);
+    if(!a.length) return '-';
+    return `<span class="demo-phase-wrap"><span class="demo-phase-name">${a[0].name}</span>${a.length > 1 ? `<span class="demo-phase-more" dir="ltr">+${a.length - 1}</span>` : ''}</span>`;
+  }
   function activityLabel(p){ return isActiveProject(p) ? 'בביצוע' : isFutureProject(p) ? 'בתכנון' : 'הסתיים'; }
   // Same delta the real card's own "פער מהתכנון" note shows.
   function deltaOf(p){ return (p.overallActualPct ?? 0) - (p.overallPlannedPct ?? 0); }
@@ -250,7 +258,7 @@
         <span class="demo-mini-sub ltr-num">${durationSharePct(p)}% מהתיק</span>
       </span>
       ${budgetTilesHTML}
-      <span class="demo-mini-col-phase" title="${phaseName(p)}">${phaseName(p)}</span>
+      <span class="demo-mini-col-phase" title="${phaseName(p)}">${phaseCellHTML(p)}</span>
       <span class="demo-mini-col-flag">
         <span class="demo-mini-updated ltr-num">עדכון אחרון: ${formatDateIL(projectLastUpdated(p))}</span>
         ${statusPill(p)}
@@ -2020,6 +2028,11 @@
       background:var(--panel-bg, transparent);
       box-shadow:3px 0 0 var(--panel-bg, transparent), -3px 0 0 var(--panel-bg, transparent);
     }
+    /* Current phase in a closed row: the first phase's name (ellipsis when long) and a
+       "+N" counter for the phases running in parallel, which never shrinks or gets cut */
+    .demo-phase-wrap{ display:inline-flex; align-items:baseline; gap:5px; max-width:100%; min-width:0; vertical-align:bottom; }
+    .demo-phase-name{ flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .demo-phase-more{ flex:none; color:var(--accent); font-weight:700; }
     /* The open panel's project list was capped at 600px - 11 projects need more, and the
        last name was cut */
     .portfolio-panel.expanded #individual-rows{ max-height:1400px !important; }
