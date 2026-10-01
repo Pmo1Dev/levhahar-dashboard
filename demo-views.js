@@ -2033,6 +2033,13 @@
       .project-card .pc-next{ flex-wrap:wrap; }
       .project-card .pc-next .impact-flag{ flex:none; overflow:visible; }
     }
+    @media(min-width:901px){
+      /* Closed rows: the progress tile stacks number / caption / bar / planned / gap in an 84px
+         tile - at the default line heights that needed 89px and the gap line sat on the tile's
+         bottom edge. Tighter line heights bring it to 78px. */
+      .demo-mini-bar .demo-mini-col-progress .demo-mini-num{ line-height:1; }
+      .demo-mini-bar .demo-mini-col-progress .demo-mini-sub{ line-height:1.15; }
+    }
     @media(max-width:900px) and (orientation:portrait){
       /* Open-card numbers: the same 24px on every site (the 10-tile variant kept 28px) */
       .pc-metrics-cube .metric .m-value{ font-size:24px; }
